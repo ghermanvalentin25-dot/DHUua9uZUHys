@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Script Loader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        textarea {
+            width: 100%;
+            max-width: 600px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        button {
+            margin: 5px 5px 15px 0;
+            padding: 10px 15px;
+            font-size: 14px;
+        }
+        pre {
+            background-color: #222;
+            color: #0f0;
+            padding: 15px;
+            white-space: pre-wrap;
+            max-width: 600px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Roblox Script Loader (Simulation)</h1>
+    
+    <textarea id="script-input" placeholder="Paste Lua script here..." rows="10"></textarea>
+    <br>
+    <button onclick="loadScript()">Load Script from Website</button>
+    <button onclick="runScript()">Simulate Run</button>
+
+    <pre id="output"></pre>
+
+    <script>
+        async function loadScript() {
+            try {
+                const url = 'https://serverside.club/scripts/myscript.lua';
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch script');
+                const code = await response.text();
+                document.getElementById('script-input').value = code;
+                document.getElementById('output').textContent = 'Script loaded successfully!';
+            } catch (err) {
+                document.getElementById('output').textContent = 'Error: ' + err.message;
+            }
+        }
+
+        function runScript() {
+            const code = document.getElementById('script-input').value;
+            if (!code.trim()) {
+                document.getElementById('output').textContent = 'No script to run!';
+                return;
+            }
+            // Simulate execution (browser cannot run Roblox Lua)
+            document.getElementById('output').textContent = `Script ready to execute:\n\n${code}`;
+        }
+    </script>
+</body>
+</html>
