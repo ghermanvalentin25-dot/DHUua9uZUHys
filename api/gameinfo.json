@@ -1,0 +1,30 @@
+// Vercel API route: /api/gameinfo
+import fs from "fs";
+
+export default async function handler(req, res) {
+  const file = "/tmp/gameinfo.json"; // temp storage on Vercel
+
+  if (req.method === "POST") {
+    try {
+      const data = req.body;
+      if (!data.gameId) {
+        return res.status(400).json({ status: "error", message: "Invalid data" });
+      }
+
+      fs.writeFileSync(file, JSON.stringify(data, null, 2));
+      return res.status(200).json({ status: "success", message: "Game info updated" });
+    } catch (e) {
+      return res.status(500).json({ status: "error", message: e.message });
+    }
+  }
+
+  // GET request (for frontend)
+  if (fs.existsSync(file)) {
+    const json = fs.readFileSync(file, "utf8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).send(json);
+  } else {
+    return res.status(200).json({ status: "error", message: "No data yet" });
+  }
+}
