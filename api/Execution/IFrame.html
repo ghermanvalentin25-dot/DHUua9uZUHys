@@ -1,0 +1,716 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IFrame</title>
+    <style>
+        :root {
+            --editor-bg: #161616;
+            --editor-line-numbers: #ffffff;
+            --editor-cursor: #ff4444;
+            --editor-selection: rgba(255, 68, 68, 0.3);
+            --editor-font: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            --accent-color: #ff4444;
+            --secondary-accent: #00ffcc;
+            --keyword-color: #ff4444;
+            --comment-color: #079c11;
+            --string-color: #00ff66;
+            --number-color: #ff66cc;
+            --function-color: #ff0101;
+            --variable-color: #00ffcc;
+            --operator-color: #ff66ff;
+            --line-highlight: #222222;
+            --active-line-number: #ffcc00;
+            --indent-guide: #44475a;
+            --active-indent-guide: #6272a4;
+            --tab-border: #ffffff;
+            --bg-primary: #161616;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --text-active: #ffffff;
+            --accent-red: #ff5555;
+            --border-radius: 4px;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--editor-font);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        #editor-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+
+        #tabs-container {
+            display: flex;
+            height: 36px;
+            background-size: contain; /* Adjust as needed */
+            background-repeat: no-repeat; /* Adjust as needed */
+            background-position: left center; /* Adjust as needed */
+            padding: 0 8px;
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
+            border-bottom: 1px solid #333;
+        }
+
+        #tabs {
+            display: flex;
+            height: 100%;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex: 1;
+            padding-bottom: 4px;
+        }
+
+        #tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            padding: 0 12px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            border-radius: var(--border-radius);
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab.active {
+            color: var(--text-active);
+            border: 1px solid var(--tab-border);
+            background-color: rgba(255, 255, 255, 0.1);
+            animation: tabActivate 0.3s ease;
+        }
+
+        @keyframes tabActivate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .tab-icon {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            transition: transform 0.3s ease;
+        }
+
+        .tab.active .tab-icon {
+            animation: iconRotate 0.3s ease;
+        }
+
+        @keyframes iconRotate {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .tab-close {
+            margin-left: 6px;
+            opacity: 0;
+            transition: all 0.2s ease;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 14px;
+        }
+
+        .tab:hover .tab-close,
+        .tab.active .tab-close {
+            opacity: 0.7;
+        }
+
+        .tab-close:hover {
+            opacity: 1;
+            background-color: var(--secondary-accent);
+            color: #161616;
+        }
+
+        .tab-name {
+            padding: 2px 4px;
+            border-radius: 2px;
+            transition: background-color 0.2s ease;
+        }
+
+        .tab-name:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-name-input {
+            background: transparent;
+            border: 1px solid var(--accent-red);
+            border-radius: 2px;
+            color: var(--text-active);
+            font-family: inherit;
+            font-size: 12px;
+            padding: 2px 4px;
+            margin: -2px 0;
+            width: 100px;
+            outline: none;
+        }
+
+        .tab-actions {
+            display: flex;
+            gap: 4px;
+            margin-left: 4px;
+            align-items: center;
+        }
+
+        .tab-action {
+            width: 24px;
+            height: 24px;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-action:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            transform: scale(1.1);
+        }
+
+        #container {
+            flex: 1;
+            overflow: hidden;
+            background-color: var(--editor-bg);
+        }
+
+        .monaco-editor, .monaco-editor-background {
+            background-color: var(--bg-primary) !important;
+        }
+
+        .monaco-editor .margin {
+            background-color: transparent !important;
+        }
+
+        .monaco-editor .line-numbers {
+            color: var(--editor-line-numbers) !important;
+            border-right: 1px solid #000000;
+            padding-right: 5px;
+        }
+
+        .monaco-editor .cursor {
+            background-color: var(--editor-cursor) !important;
+            border-color: transparent !important;
+        }
+
+        .monaco-editor .selected-text {
+            background-color: var(--editor-selection) !important;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            color: #fff;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            font-size: 12px;
+        }
+
+        .notification.error {
+            background-color: #ff4444;
+        }
+
+        .notification.success {
+            background-color: #00ff66;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="editor-container">
+        <div id="tabs-container">
+            <div id="tabs">
+                <div class="tab active" data-id="main">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                    </svg>
+                    <span class="tab-name">script.lua</span>
+                    <span class="tab-close">×</span>
+                </div>
+            </div>
+            <div class="tab-actions">
+                <button class="tab-action" id="add-tab" title="New Tab (Ctrl+T)">+</button>
+            </div>
+        </div>
+        <div id="container"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/loader.min.js"></script>
+    <script>
+        require.config({
+            paths: {
+                'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs'
+            }
+        });
+
+        let editor;
+        let completionProvider;
+        const proposals = [];
+        let currentTab = "main";
+        const tabs = {
+            "main": {
+                content: `print("Hello world")`,
+                language: "lua",
+                name: "script.lua",
+                model: null
+            }
+        };
+        let minimapEnabled = false;
+
+        function sanitizeInput(str) {
+            return str.replace(/[<>&"]/g, c => ({'<': '<', '>': '>', '&': '&', '"': '"'}[c]));
+        }
+
+        function showNotification(title, message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<strong>${sanitizeInput(title)}</strong>: ${sanitizeInput(message)}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        require(['vs/editor/editor.main'], function () {
+            function getCssVar(name) {
+                return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            }
+
+            monaco.editor.defineTheme('dark-theme', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'keyword', foreground: getCssVar('--keyword-color').substring(1) },
+                    { token: 'comment', foreground: getCssVar('--comment-color').substring(1), fontStyle: 'italic' },
+                    { token: 'string', foreground: getCssVar('--string-color').substring(1) },
+                    { token: 'number', foreground: getCssVar('--number-color').substring(1) },
+                    { token: 'identifier', foreground: getCssVar('--variable-color').substring(1) },
+                    { token: 'operator', foreground: getCssVar('--operator-color').substring(1) },
+                ],
+                colors: {
+                    'editor.background': getCssVar('--editor-bg'),
+                    'editor.foreground': '#ffffff',
+                    'editorCursor.foreground': getCssVar('--editor-cursor'),
+                    'editor.lineHighlightBackground': getCssVar('--line-highlight'),
+                    'editorLineNumber.foreground': getCssVar('--editor-line-numbers'),
+                    'editorLineNumber.activeForeground': getCssVar('--active-line-number'),
+                    'editor.selectionBackground': getCssVar('--editor-selection'),
+                    'editorIndentGuide.background': getCssVar('--indent-guide'),
+                    'editorIndentGuide.activeBackground': getCssVar('--active-indent-guide'),
+                    'editorError.foreground': 'transparent',
+                    'editorError.background': 'transparent',
+                    'editorWarning.foreground': 'transparent',
+                    'editorWarning.background': 'transparent',
+                }
+            });
+
+            function createEditor() {
+                if (editor) {
+                    editor.dispose();
+                }
+
+                const tab = tabs[currentTab];
+                if (!tab.model) {
+                    tab.model = monaco.editor.createModel(tab.content, tab.language);
+                }
+
+                editor = monaco.editor.create(document.getElementById('container'), {
+                    model: tab.model,
+                    theme: "dark-theme",
+                    automaticLayout: true,
+                    fontFamily: 'var(--editor-font)',
+                    fontSize: 12,
+                    lineNumbers: 'on',
+                    minimap: { enabled: minimapEnabled },
+                    scrollBeyondLastLine: false,
+                    tabSize: 4,
+                    insertSpaces: true,
+                    suggest: {
+                        snippetsPreventQuickSuggestions: false,
+                        showIcons: true,
+                    },
+                    folding: true,
+                    wordWrap: 'off',
+                    cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on',
+                });
+
+                editor.onDidChangeModelContent(() => {
+                    tabs[currentTab].content = editor.getValue();
+                });
+
+                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, createNewFile);
+                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, removeCurrentTab);
+            }
+
+            function setupCompletionProvider() {
+                if (completionProvider) {
+                    completionProvider.dispose();
+                }
+
+                completionProvider = monaco.languages.registerCompletionItemProvider('lua', {
+                    provideCompletionItems: () => ({
+                        suggestions: proposals
+                    }),
+                    triggerCharacters: ['.', ':']
+                });
+            }
+
+            function setupEventListeners() {
+                const addTabButton = document.getElementById('add-tab');
+
+                addTabButton.removeEventListener('click', createNewFile);
+                document.removeEventListener('click', handleClick);
+                document.removeEventListener('dblclick', handleDoubleClick);
+
+                addTabButton.addEventListener('click', createNewFile);
+                document.addEventListener('click', handleClick);
+                document.addEventListener('dblclick', handleDoubleClick);
+
+                function handleClick(e) {
+                    if (e.target.classList.contains('tab-close')) {
+                        closeTab(e.target.closest('.tab').dataset.id);
+                        e.stopPropagation();
+                    } else if (e.target.closest('.tab')) {
+                        const tab = e.target.closest('.tab');
+                        if (!e.target.classList.contains('tab-name-input')) {
+                            switchToTab(tab.dataset.id);
+                        }
+                    }
+                }
+
+                function handleDoubleClick(e) {
+                    if (e.target.classList.contains('tab-name')) {
+                        startEditingTabName(e.target);
+                    }
+                }
+
+                window.addEventListener('beforeunload', () => {
+                    if (editor) editor.dispose();
+                    if (completionProvider) completionProvider.dispose();
+                    Object.values(tabs).forEach(tab => {
+                        if (tab.model) tab.model.dispose();
+                    });
+                });
+            }
+
+            function createNewFile() {
+                if (Object.keys(tabs).length >= 10) {
+                    showNotification("Error", "Maximum number of tabs (4) reached.", "error");
+                    return;
+                }
+
+                const fileId = 'file_' + Date.now();
+                const fileName = `script_${Object.keys(tabs).length + 1}.lua`;
+
+                tabs[fileId] = {
+                    content: '',
+                    language: 'lua',
+                    name: fileName,
+                    model: null
+                };
+
+                const tabElement = document.createElement('div');
+                tabElement.className = 'tab';
+                tabElement.dataset.id = fileId;
+                tabElement.innerHTML = `
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                    </svg>
+                    <span class="tab-name">${sanitizeInput(fileName)}</span>
+                    <span class="tab-close">×</span>
+                `;
+
+                document.getElementById('tabs').appendChild(tabElement);
+                switchToTab(fileId);
+                showNotification("Success", "New tab created", "success");
+            }
+
+            function removeCurrentTab() {
+                if (Object.keys(tabs).length <= 1) {
+                    showNotification("Warning", "Cannot remove the last tab.", "error");
+                    return;
+                }
+                closeTab(currentTab);
+            }
+
+            function switchToTab(tabId) {
+                if (!tabs[tabId] || tabId === currentTab) return;
+
+                if (tabs[currentTab] && editor) {
+                    tabs[currentTab].content = editor.getValue();
+                }
+
+                currentTab = tabId;
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.toggle('active', tab.dataset.id === tabId);
+                });
+
+                const tab = tabs[tabId];
+                if (!tab.model) {
+                    tab.model = monaco.editor.createModel(tab.content, tab.language);
+                }
+
+                editor.setModel(tab.model);
+            }
+
+            function closeTab(tabId) {
+                if (Object.keys(tabs).length <= 1) {
+                    showNotification("Warning", "Cannot close the last tab.", "error");
+                    return;
+                }
+
+                const tabElement = document.querySelector(`.tab[data-id="${tabId}"]`);
+                if (tabElement) tabElement.remove();
+
+                if (tabs[tabId].model) {
+                    tabs[tabId].model.dispose();
+                }
+                delete tabs[tabId];
+
+                if (currentTab === tabId) {
+                    switchToTab(Object.keys(tabs)[0]);
+                }
+                showNotification("Success", "Tab closed", "success");
+            }
+
+            function startEditingTabName(nameElement) {
+                const tab = nameElement.closest('.tab');
+                const tabId = tab.dataset.id;
+                const currentName = tabs[tabId].name;
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'tab-name-input';
+                input.value = currentName;
+
+                nameElement.replaceWith(input);
+                input.focus();
+
+                function finishEditing() {
+                    let newName = input.value.trim();
+                    if (!newName) newName = currentName;
+                    else if (!newName.endsWith('.lua')) newName += '.lua';
+                    newName = sanitizeInput(newName);
+                    tabs[tabId].name = newName;
+
+                    const newNameElement = document.createElement('span');
+                    newNameElement.className = 'tab-name';
+                    newNameElement.textContent = newName;
+                    input.replaceWith(newNameElement);
+                    showNotification("Success", "Tab renamed", "success");
+                }
+
+                input.addEventListener('blur', finishEditing);
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') finishEditing();
+                    else if (e.key === 'Escape') {
+                        const newNameElement = document.createElement('span');
+                        newNameElement.className = 'tab-name';
+                        newNameElement.textContent = currentName;
+                        input.replaceWith(newNameElement);
+                    }
+                });
+            }
+
+function addLuaIntellisense() {
+    proposals.push(
+        {
+            label: 'print',
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: 'print(${1:...})',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Prints to the output'
+        },
+        {
+            label: 'function',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'function ${1:name}(${2:params})\n\t${0}\nend',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Function declaration'
+        },
+        {
+            label: 'local',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'local ${1:name} = ${0}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Local variable declaration'
+        },
+        {
+            label: 'if',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'if ${1:condition} then\n\t${0}\nend',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Conditional statement'
+        },
+        {
+            label: 'for',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'for ${1:i} = ${2:1}, ${3:10} do\n\t${0}\nend',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Loop construct'
+        },
+        {
+            label: 'while',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'while ${1:condition} do\n\t${0}\nend',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Loop construct'
+        },
+        {
+            label: 'warn',
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: 'warn(${1:message})',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Warns in console'
+        },
+        {
+            label: 'require',
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: 'require(${1:module})',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Loads a ModuleScript'
+        },
+        {
+            label: 'game',
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: 'game',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: 'Root of the Roblox data model'
+        },
+        { label: 'then', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'then', detail: 'Used in conditionals' },
+        { label: 'elseif', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'elseif ${1:condition} then', detail: 'Conditional branch' },
+        { label: 'else', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'else', detail: 'Else block' },
+        { label: 'end', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'end', detail: 'Ends a block' },
+        { label: 'do', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'do\n\t${0}\nend', detail: 'Do block' },
+        { label: 'repeat', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'repeat\n\t${0}\nuntil ${1:condition}', detail: 'Repeat until loop' },
+        { label: 'return', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'return ${0}', detail: 'Return statement' },
+        { label: 'break', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'break', detail: 'Breaks loop' },
+        { label: 'continue', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'continue', detail: 'Continues next loop iteration' },
+        { label: 'true', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'true', detail: 'Boolean true' },
+        { label: 'false', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'false', detail: 'Boolean false' },
+        { label: 'nil', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'nil', detail: 'Represents no value' },
+        { label: 'not', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'not ', detail: 'Logical NOT' },
+        { label: 'and', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'and', detail: 'Logical AND' },
+        { label: 'or', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'or', detail: 'Logical OR' },
+        { label: 'in', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'in', detail: 'Used in generic for loops' },
+        { label: 'self', kind: monaco.languages.CompletionItemKind.Variable, insertText: 'self', detail: 'Reference to object in OOP context' },
+        { label: 'type', kind: monaco.languages.CompletionItemKind.Function, insertText: 'type(${1:value})', detail: 'Returns type of a value' },
+        { label: 'pairs', kind: monaco.languages.CompletionItemKind.Function, insertText: 'for ${1:k}, ${2:v} in pairs(${3:table}) do\n\t${0}\nend', detail: 'Iterate over table' },
+        { label: 'ipairs', kind: monaco.languages.CompletionItemKind.Function, insertText: 'for ${1:i}, ${2:v} in ipairs(${3:array}) do\n\t${0}\nend', detail: 'Iterate numerically' },
+        { label: 'next', kind: monaco.languages.CompletionItemKind.Function, insertText: 'next(${1:table})', detail: 'Returns next key-value in table' },
+        { label: 'tostring', kind: monaco.languages.CompletionItemKind.Function, insertText: 'tostring(${1:value})', detail: 'Converts to string' },
+        { label: 'tonumber', kind: monaco.languages.CompletionItemKind.Function, insertText: 'tonumber(${1:value})', detail: 'Converts to number' },
+        { label: 'error', kind: monaco.languages.CompletionItemKind.Function, insertText: 'error(${1:message})', detail: 'Raises an error' },
+        { label: 'pcall', kind: monaco.languages.CompletionItemKind.Function, insertText: 'pcall(${1:function})', detail: 'Protected call' },
+        { label: 'xpcall', kind: monaco.languages.CompletionItemKind.Function, insertText: 'xpcall(${1:function}, ${2:errorHandler})', detail: 'Protected call with error handler' },
+        { label: 'assert', kind: monaco.languages.CompletionItemKind.Function, insertText: 'assert(${1:condition}, ${2:errorMessage})', detail: 'Throws if condition false' },
+        { label: 'select', kind: monaco.languages.CompletionItemKind.Function, insertText: 'select(${1:index}, ...)', detail: 'Selects argument by index' },
+        { label: 'unpack', kind: monaco.languages.CompletionItemKind.Function, insertText: 'unpack(${1:table})', detail: 'Unpacks table elements' },
+        { label: 'getfenv', kind: monaco.languages.CompletionItemKind.Function, insertText: 'getfenv(${1:function})', detail: 'Gets environment of function' },
+        { label: 'setfenv', kind: monaco.languages.CompletionItemKind.Function, insertText: 'setfenv(${1:function}, ${2:env})', detail: 'Sets environment' },
+        { label: 'table.insert', kind: monaco.languages.CompletionItemKind.Function, insertText: 'table.insert(${1:table}, ${2:value})', detail: 'Insert into table' },
+        { label: 'table.remove', kind: monaco.languages.CompletionItemKind.Function, insertText: 'table.remove(${1:table}, ${2:index})', detail: 'Remove from table' },
+        { label: 'table.concat', kind: monaco.languages.CompletionItemKind.Function, insertText: 'table.concat(${1:table}, ${2:\',\'})', detail: 'Concatenate table values' },
+        { label: 'table.sort', kind: monaco.languages.CompletionItemKind.Function, insertText: 'table.sort(${1:table})', detail: 'Sorts a table' },
+        { label: 'math.abs', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.abs(${1:x})', detail: 'Absolute value' },
+        { label: 'math.random', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.random(${1:min}, ${2:max})', detail: 'Random number' },
+        { label: 'math.floor', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.floor(${1:number})', detail: 'Rounds down' },
+        { label: 'math.ceil', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.ceil(${1:number})', detail: 'Rounds up' },
+        { label: 'math.clamp', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.clamp(${1:value}, ${2:min}, ${3:max})', detail: 'Clamps a value' },
+        { label: 'math.sqrt', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.sqrt(${1:number})', detail: 'Square root' },
+        { label: 'string.sub', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.sub(${1:str}, ${2:start}, ${3:end})', detail: 'Substring' },
+        { label: 'string.len', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.len(${1:str})', detail: 'String length' },
+        { label: 'string.upper', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.upper(${1:str})', detail: 'Uppercase' },
+        { label: 'string.lower', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.lower(${1:str})', detail: 'Lowercase' },
+        { label: 'string.find', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.find(${1:str}, ${2:pattern})', detail: 'Find pattern in string' },
+        { label: 'string.format', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.format(${1:pattern}, ${2:...})', detail: 'Format string' },
+        { label: 'Instance.new', kind: monaco.languages.CompletionItemKind.Function, insertText: 'Instance.new(${1:"Part"}, ${2:parent})', detail: 'Creates a new Roblox instance' },
+        { label: 'workspace', kind: monaco.languages.CompletionItemKind.Variable, insertText: 'workspace', detail: 'Reference to 3D world' },
+        { label: 'script', kind: monaco.languages.CompletionItemKind.Variable, insertText: 'script', detail: 'The running script' },
+        { label: 'wait', kind: monaco.languages.CompletionItemKind.Function, insertText: 'wait(${1:seconds})', detail: 'Yields for time' },
+        { label: 'task.wait', kind: monaco.languages.CompletionItemKind.Function, insertText: 'task.wait(${1:seconds})', detail: 'Better wait function' },
+        { label: 'task.spawn', kind: monaco.languages.CompletionItemKind.Function, insertText: 'task.spawn(${1:function})', detail: 'Run function asynchronously' },
+        { label: 'task.delay', kind: monaco.languages.CompletionItemKind.Function, insertText: 'task.delay(${1:seconds}, ${2:function})', detail: 'Run after delay' },
+        { label: 'spawn', kind: monaco.languages.CompletionItemKind.Function, insertText: 'spawn(${1:function})', detail: 'Legacy asynchronous execution' },
+        { label: 'game:GetService', kind: monaco.languages.CompletionItemKind.Function, insertText: 'game:GetService("${1:ServiceName}")', detail: 'Retrieves a Roblox service' },
+        { label: 'workspace:GetChildren', kind: monaco.languages.CompletionItemKind.Function, insertText: 'workspace:GetChildren()', detail: 'Gets all children' },
+        { label: 'workspace:FindFirstChild', kind: monaco.languages.CompletionItemKind.Function, insertText: 'workspace:FindFirstChild("${1:name}")', detail: 'Finds child by name' },
+    );
+}
+
+            try {
+                createEditor();
+                setupCompletionProvider();
+                addLuaIntellisense();
+                setupEventListeners();
+            } catch (error) {
+                console.error('Editor initialization failed:', error);
+                showNotification("Error", "Failed to initialize editor", "error");
+            }
+        });
+    </script>
+</body>
+</html>
