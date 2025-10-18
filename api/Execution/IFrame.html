@@ -463,7 +463,7 @@
                 }
 
                 const fileId = 'file_' + Date.now();
-                const fileName = `script_${Object.keys(tabs).length + 1}.lua`;
+                const fileName = `Page ${Object.keys(tabs).length + 1}`;
 
                 tabs[fileId] = {
                     content: '',
@@ -715,3 +715,4 @@ function addLuaIntellisense() {
 </body>
 
 </html>
+
